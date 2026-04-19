@@ -268,26 +268,6 @@ body,
 #sidebar-menus .site-data .length-num,
 #aside-content .card-archives .card-archive-list-count,
 #aside-content .card-webinfo .webinfo .item-count {
-    position: relative;
-    color: transparent !important;
-}
-
-#aside-content .card-info .site-data .length-num::before,
-#sidebar-menus .site-data .length-num::before,
-#aside-content .card-archives .card-archive-list-count::before,
-#aside-content .card-webinfo .webinfo .item-count::before {
-    content: "0";
-    color: #d94e67;
-    font-size: inherit;
-    font-weight: 700;
-    line-height: 1;
-}
-
-#aside-content .card-webinfo .webinfo .item-count i {
-    display: none !important;
-}
-
-#aside-content .card-info .site-data .length-num {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -298,6 +278,10 @@ body,
     color: #d94e67 !important;
     font-size: 1.08rem;
     line-height: 1;
+}
+
+#aside-content .card-webinfo .webinfo .item-count i {
+    display: none !important;
 }
 
 #aside-content .card-widget .card-info-social-icons i,
