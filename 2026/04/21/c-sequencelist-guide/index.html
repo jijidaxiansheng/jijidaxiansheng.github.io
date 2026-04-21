@@ -1,0 +1,289 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>C 语言顺序表入门：从存储结构到常用操作实现 | 向导</title><meta name="author" content="谭世杰"><meta name="copyright" content="谭世杰"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="fff4f7"><meta name="description" content="用一篇文章梳理顺序表的定义、特点，以及在 C 语言里如何完成初始化、插入、删除、扩容与遍历。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="C 语言顺序表入门：从存储结构到常用操作实现">
+<meta property="og:url" content="https://jijidaxiansheng.github.io/2026/04/21/c-sequencelist-guide/index.html">
+<meta property="og:site_name" content="向导">
+<meta property="og:description" content="用一篇文章梳理顺序表的定义、特点，以及在 C 语言里如何完成初始化、插入、删除、扩容与遍历。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://jijidaxiansheng.github.io/img/top.jpg">
+<meta property="article:published_time" content="2026-04-21T12:12:42.000Z">
+<meta property="article:author" content="谭世杰">
+<meta property="article:tag" content="C语言">
+<meta property="article:tag" content="数据结构">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jijidaxiansheng.github.io/img/top.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "C 语言顺序表入门：从存储结构到常用操作实现",
+  "url": "https://jijidaxiansheng.github.io/2026/04/21/c-sequencelist-guide/",
+  "image": "https://jijidaxiansheng.github.io/img/top.jpg",
+  "datePublished": "2026-04-21T12:12:42.000Z",
+  "dateModified": "2026-04-21T12:12:42.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "谭世杰",
+      "url": "https://jijidaxiansheng.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://jijidaxiansheng.github.io/2026/04/21/c-sequencelist-guide/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'fff4f7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'C 语言顺序表入门：从存储结构到常用操作实现',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/bg.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-house"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-box-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="not-top-img fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">向导</span></a><a class="nav-page-title" href="/"><span class="site-name">C 语言顺序表入门：从存储结构到常用操作实现</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-house"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-box-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">C 语言顺序表入门：从存储结构到常用操作实现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="fa-fw post-meta-icon far fa-calendar-alt"></i><span class="post-meta-label">发表于</span><time datetime="2026-04-21T12:12:42.000Z" title="发表于 2026-04-21 20:12:42">2026-04-21</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%80/">编程基础</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div><article class="container post-content" id="article-container"><p>顺序表是数据结构学习里非常适合入门的一种线性结构。它的逻辑关系很直观，底层实现也不复杂，但正因为简单，特别适合拿来练习数组、指针、边界处理和函数封装。</p>
+<span id="more"></span>
+
+<p>这篇文章不追求把概念讲得很“玄”，而是围绕一个目标展开：用 C 语言写出一个能正常使用的顺序表，并理解它为什么这样设计。</p>
+<h2 id="什么是顺序表"><a href="#什么是顺序表" class="headerlink" title="什么是顺序表"></a>什么是顺序表</h2><p>顺序表可以理解为“用一段连续存储空间保存多个同类型元素”的线性表。</p>
+<p>如果我们把一组整数依次放进数组里：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">10</span> <span class="number">20</span> <span class="number">30</span> <span class="number">40</span> <span class="number">50</span></span><br></pre></td></tr></table></figure>
+
+<p>那么这组数据在内存中通常是连续存放的，访问第 <code>i</code> 个元素时，可以直接通过下标定位。这种“逻辑上相邻，物理上也相邻”的结构，就是顺序表最核心的特点。</p>
+<p>顺序表常见的两个实现方向是：</p>
+<ol>
+<li>静态顺序表：底层数组长度固定，简单但容量受限。</li>
+<li>动态顺序表：底层空间不够时自动扩容，更接近实际开发中的使用方式。</li>
+</ol>
+<p>如果是练习数据结构，我更建议直接从动态顺序表开始，因为它能把数组、内存管理和接口设计一起串起来。</p>
+<h2 id="顺序表的特点"><a href="#顺序表的特点" class="headerlink" title="顺序表的特点"></a>顺序表的特点</h2><p>顺序表的优点很明显：</p>
+<ul>
+<li>支持随机访问，按下标读取元素很快。</li>
+<li>结构简单，底层容易实现。</li>
+<li>缓存友好，遍历效率通常不错。</li>
+</ul>
+<p>它的局限也同样明显：</p>
+<ul>
+<li>中间位置插入或删除元素时，需要移动后续数据。</li>
+<li>如果容量不够，扩容会带来额外开销。</li>
+<li>必须保证连续存储空间，内存管理要更仔细。</li>
+</ul>
+<p>所以顺序表很适合“读多改少”或者“尾部追加较多”的场景，但如果频繁在中间插入删除，就不一定是最合适的选择。</p>
+<h2 id="先设计一个顺序表结构"><a href="#先设计一个顺序表结构" class="headerlink" title="先设计一个顺序表结构"></a>先设计一个顺序表结构</h2><p>为了让顺序表既能存数据，又能知道当前用了多少空间、总容量是多少，我们可以先定义一个结构体：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="type">int</span> DataType;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">SeqList</span> &#123;</span></span><br><span class="line">    DataType *data;</span><br><span class="line">    <span class="type">int</span> size;</span><br><span class="line">    <span class="type">int</span> capacity;</span><br><span class="line">&#125; SeqList;</span><br></pre></td></tr></table></figure>
+
+<p>这里有 3 个关键成员：</p>
+<ul>
+<li><code>data</code>：指向动态数组的首地址。</li>
+<li><code>size</code>：当前已经存了多少个元素。</li>
+<li><code>capacity</code>：当前总共能存多少个元素。</li>
+</ul>
+<p>这个设计非常常见，因为它把“有效数据个数”和“底层空间大小”区分开了。很多初学者一开始容易把两者混在一起，后面一做插入删除就容易出错。</p>
+<h2 id="常用操作应该有哪些"><a href="#常用操作应该有哪些" class="headerlink" title="常用操作应该有哪些"></a>常用操作应该有哪些</h2><p>一个基本可用的顺序表，通常至少要支持这些能力：</p>
+<ul>
+<li>初始化</li>
+<li>销毁</li>
+<li>打印</li>
+<li>尾插</li>
+<li>任意位置插入</li>
+<li>任意位置删除</li>
+<li>按下标访问</li>
+<li>容量不足时扩容</li>
+</ul>
+<p>如果这些接口都能稳定运行，这个顺序表就已经具备练习和使用价值了。</p>
+<h2 id="关键思路：容量不够时先扩容"><a href="#关键思路：容量不够时先扩容" class="headerlink" title="关键思路：容量不够时先扩容"></a>关键思路：容量不够时先扩容</h2><p>动态顺序表和普通数组最大的区别，就在于“空间不够时怎么办”。</p>
+<p>最直接的做法是：</p>
+<ol>
+<li>申请一块更大的新空间。</li>
+<li>把旧数据复制过去。</li>
+<li>释放旧空间。</li>
+<li>更新指针和容量。</li>
+</ol>
+<p>在 C 语言里，这个过程通常可以交给 <code>realloc</code> 来做。为了让主逻辑更清晰，我们可以把扩容单独封装成一个函数。</p>
+<h2 id="一份完整可运行的实现"><a href="#一份完整可运行的实现" class="headerlink" title="一份完整可运行的实现"></a>一份完整可运行的实现</h2><p>下面给出一个适合学习阶段使用的动态顺序表示例：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="type">int</span> DataType;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">SeqList</span> &#123;</span></span><br><span class="line">    DataType *data;</span><br><span class="line">    <span class="type">int</span> size;</span><br><span class="line">    <span class="type">int</span> capacity;</span><br><span class="line">&#125; SeqList;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">InitList</span><span class="params">(SeqList *<span class="built_in">list</span>)</span> &#123;</span><br><span class="line">    <span class="built_in">list</span>-&gt;data = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="built_in">list</span>-&gt;size = <span class="number">0</span>;</span><br><span class="line">    <span class="built_in">list</span>-&gt;capacity = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">DestroyList</span><span class="params">(SeqList *<span class="built_in">list</span>)</span> &#123;</span><br><span class="line">    <span class="built_in">free</span>(<span class="built_in">list</span>-&gt;data);</span><br><span class="line">    <span class="built_in">list</span>-&gt;data = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="built_in">list</span>-&gt;size = <span class="number">0</span>;</span><br><span class="line">    <span class="built_in">list</span>-&gt;capacity = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">EnsureCapacity</span><span class="params">(SeqList *<span class="built_in">list</span>)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">list</span>-&gt;size &lt; <span class="built_in">list</span>-&gt;capacity) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> newCapacity = (<span class="built_in">list</span>-&gt;capacity == <span class="number">0</span>) ? <span class="number">4</span> : <span class="built_in">list</span>-&gt;capacity * <span class="number">2</span>;</span><br><span class="line">    DataType *tmp = (DataType *)<span class="built_in">realloc</span>(<span class="built_in">list</span>-&gt;data, newCapacity * <span class="keyword">sizeof</span>(DataType));</span><br><span class="line">    <span class="keyword">if</span> (tmp == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">list</span>-&gt;data = tmp;</span><br><span class="line">    <span class="built_in">list</span>-&gt;capacity = newCapacity;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">PushBack</span><span class="params">(SeqList *<span class="built_in">list</span>, DataType value)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (!EnsureCapacity(<span class="built_in">list</span>)) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">list</span>-&gt;data[<span class="built_in">list</span>-&gt;size] = value;</span><br><span class="line">    <span class="built_in">list</span>-&gt;size++;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">Insert</span><span class="params">(SeqList *<span class="built_in">list</span>, <span class="type">int</span> pos, DataType value)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (pos &lt; <span class="number">0</span> || pos &gt; <span class="built_in">list</span>-&gt;size) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!EnsureCapacity(<span class="built_in">list</span>)) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="built_in">list</span>-&gt;size; i &gt; pos; --i) &#123;</span><br><span class="line">        <span class="built_in">list</span>-&gt;data[i] = <span class="built_in">list</span>-&gt;data[i - <span class="number">1</span>];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">list</span>-&gt;data[pos] = value;</span><br><span class="line">    <span class="built_in">list</span>-&gt;size++;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">Erase</span><span class="params">(SeqList *<span class="built_in">list</span>, <span class="type">int</span> pos)</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (pos &lt; <span class="number">0</span> || pos &gt;= <span class="built_in">list</span>-&gt;size) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = pos; i &lt; <span class="built_in">list</span>-&gt;size - <span class="number">1</span>; ++i) &#123;</span><br><span class="line">        <span class="built_in">list</span>-&gt;data[i] = <span class="built_in">list</span>-&gt;data[i + <span class="number">1</span>];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">list</span>-&gt;size--;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">PrintList</span><span class="params">(<span class="type">const</span> SeqList *<span class="built_in">list</span>)</span> &#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="built_in">list</span>-&gt;size; ++i) &#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%d &quot;</span>, <span class="built_in">list</span>-&gt;data[i]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">    SeqList <span class="built_in">list</span>;</span><br><span class="line">    InitList(&amp;<span class="built_in">list</span>);</span><br><span class="line"></span><br><span class="line">    PushBack(&amp;<span class="built_in">list</span>, <span class="number">10</span>);</span><br><span class="line">    PushBack(&amp;<span class="built_in">list</span>, <span class="number">20</span>);</span><br><span class="line">    PushBack(&amp;<span class="built_in">list</span>, <span class="number">30</span>);</span><br><span class="line">    Insert(&amp;<span class="built_in">list</span>, <span class="number">1</span>, <span class="number">15</span>);</span><br><span class="line">    Erase(&amp;<span class="built_in">list</span>, <span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">    PrintList(&amp;<span class="built_in">list</span>);</span><br><span class="line">    DestroyList(&amp;<span class="built_in">list</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>运行后，输出结果为：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">10 15 30</span><br></pre></td></tr></table></figure>
+
+<p>这个结果可以帮助我们验证逻辑：</p>
+<ul>
+<li>原始尾插后得到 <code>10 20 30</code></li>
+<li>在下标 <code>1</code> 的位置插入 <code>15</code>，得到 <code>10 15 20 30</code></li>
+<li>删除下标 <code>2</code> 的元素后，变成 <code>10 15 30</code></li>
+</ul>
+<h2 id="插入操作为什么要从后往前移动"><a href="#插入操作为什么要从后往前移动" class="headerlink" title="插入操作为什么要从后往前移动"></a>插入操作为什么要从后往前移动</h2><p>插入是顺序表里最容易写错的部分之一。</p>
+<p>假设当前数据是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">10 20 30 40</span><br></pre></td></tr></table></figure>
+
+<p>如果要在下标 <code>1</code> 插入一个新元素 <code>15</code>，那么原本的 <code>20 30 40</code> 都要整体后移一位。</p>
+<p>这里必须从后往前搬移：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (<span class="type">int</span> i = <span class="built_in">list</span>-&gt;size; i &gt; pos; --i) &#123;</span><br><span class="line">    <span class="built_in">list</span>-&gt;data[i] = <span class="built_in">list</span>-&gt;data[i - <span class="number">1</span>];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果从前往后移动，前面的元素会把后面的原始值覆盖掉，最终数据就乱了。</p>
+<h2 id="删除操作的本质"><a href="#删除操作的本质" class="headerlink" title="删除操作的本质"></a>删除操作的本质</h2><p>删除和插入正好相反。</p>
+<p>当删除某个位置的元素后，需要把它后面的元素整体向前移动一位，这样才能保证逻辑上的连续性：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (<span class="type">int</span> i = pos; i &lt; <span class="built_in">list</span>-&gt;size - <span class="number">1</span>; ++i) &#123;</span><br><span class="line">    <span class="built_in">list</span>-&gt;data[i] = <span class="built_in">list</span>-&gt;data[i + <span class="number">1</span>];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后再把 <code>size</code> 减 1，就表示有效元素个数少了一个。</p>
+<p>注意，这里通常不需要真的把最后一个位置清零，因为只要 <code>size</code> 变了，逻辑上那个位置就已经不属于当前顺序表的有效数据范围。</p>
+<h2 id="学顺序表时最容易踩的坑"><a href="#学顺序表时最容易踩的坑" class="headerlink" title="学顺序表时最容易踩的坑"></a>学顺序表时最容易踩的坑</h2><p>如果你刚开始写这个结构，下面几个问题很常见：</p>
+<h3 id="1-忘记检查下标是否合法"><a href="#1-忘记检查下标是否合法" class="headerlink" title="1. 忘记检查下标是否合法"></a>1. 忘记检查下标是否合法</h3><p>插入和删除时一定要做边界判断。</p>
+<ul>
+<li>插入允许 <code>pos == size</code>，因为这相当于尾插。</li>
+<li>删除要求 <code>0 &lt;= pos &lt; size</code>，否则就会越界。</li>
+</ul>
+<h3 id="2-扩容成功前就直接改原指针"><a href="#2-扩容成功前就直接改原指针" class="headerlink" title="2. 扩容成功前就直接改原指针"></a>2. 扩容成功前就直接改原指针</h3><p><code>realloc</code> 失败时会返回 <code>NULL</code>，如果你直接写：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">list</span>-&gt;data = <span class="built_in">realloc</span>(<span class="built_in">list</span>-&gt;data, newCapacity * <span class="keyword">sizeof</span>(DataType));</span><br></pre></td></tr></table></figure>
+
+<p>一旦失败，原来的地址就丢了，后面既无法继续使用，也无法正确释放。</p>
+<p>更稳妥的写法是先接到临时指针里，再判断是否成功。</p>
+<h3 id="3-把容量和元素个数混为一谈"><a href="#3-把容量和元素个数混为一谈" class="headerlink" title="3. 把容量和元素个数混为一谈"></a>3. 把容量和元素个数混为一谈</h3><p><code>capacity</code> 表示总空间，<code>size</code> 表示有效数据个数。</p>
+<p>很多 bug 本质上都来自这两个变量意义不清晰，比如访问了还没赋值的位置，或者插入时忘记先扩容。</p>
+<h2 id="顺序表的时间复杂度"><a href="#顺序表的时间复杂度" class="headerlink" title="顺序表的时间复杂度"></a>顺序表的时间复杂度</h2><p>掌握复杂度，有助于理解它的适用场景：</p>
+<ul>
+<li>按下标访问：<code>O(1)</code></li>
+<li>尾部追加：平均情况下 <code>O(1)</code>，扩容时会退化</li>
+<li>中间插入：<code>O(n)</code></li>
+<li>中间删除：<code>O(n)</code></li>
+<li>遍历：<code>O(n)</code></li>
+</ul>
+<p>这也是为什么顺序表虽然常用，但并不是所有线性问题的最优解。</p>
+<h2 id="可以继续往下扩展什么"><a href="#可以继续往下扩展什么" class="headerlink" title="可以继续往下扩展什么"></a>可以继续往下扩展什么</h2><p>如果你已经能写出基础版本，可以继续补这些能力：</p>
+<ul>
+<li>查找指定元素</li>
+<li>修改指定位置的值</li>
+<li>头插与头删</li>
+<li>判空</li>
+<li>获取当前长度</li>
+<li>清空顺序表</li>
+</ul>
+<p>再往后，还可以尝试把 <code>int</code> 改成更通用的类型设计，或者和链表做一组对比练习，效果会非常好。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>顺序表本质上就是“用连续空间管理一组线性数据”。它的重点不在于概念有多难，而在于你是否真正理解了这几件事：</p>
+<ul>
+<li>数据为什么要连续存放</li>
+<li>插入和删除为什么需要移动元素</li>
+<li><code>size</code> 和 <code>capacity</code> 分别表示什么</li>
+<li>扩容时为什么要格外小心指针</li>
+</ul>
+<p>把这些地方写顺了，后面再学链表、栈、队列，思路会轻松很多。</p>
+<p>如果你正在复习 C 语言数据结构，我很推荐你自己再手敲一遍这份代码，尤其是插入、删除和扩容这三个部分。真正写通一次，比只看概念有效得多。</p>
+</article><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/C%E8%AF%AD%E8%A8%80/">C语言</a><a class="post-meta__tags" href="/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/">数据结构</a></div><div class="post-share"><div class="social-share" data-image="/img/top.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/04/19/%E6%B5%8B%E8%AF%95%E6%96%87%E7%AB%A0/" title="测试文章"><img class="cover" src="/img/top.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">测试文章</div></div><div class="info-2"><div class="info-item-1">这里开始写正文。 一、前言介绍这篇文章要解决什么问题，或者这篇文章想记录什么内容。 二、正文在这里展开你的正文内容，可以按小节组织结构。 三、总结最后写一点总结，或者记录这次的收获与后续计划。 </div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">谭世杰</div><div class="author-info-description">记录成长与学习的足迹</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/jijidaxiansheng"><i class="fab fa-github"></i><span>GitHub</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/jijidaxiansheng" target="_blank" title="GitHub"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到我的博客</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E9%A1%BA%E5%BA%8F%E8%A1%A8"><span class="toc-number">1.</span> <span class="toc-text">什么是顺序表</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%BA%E5%BA%8F%E8%A1%A8%E7%9A%84%E7%89%B9%E7%82%B9"><span class="toc-number">2.</span> <span class="toc-text">顺序表的特点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%88%E8%AE%BE%E8%AE%A1%E4%B8%80%E4%B8%AA%E9%A1%BA%E5%BA%8F%E8%A1%A8%E7%BB%93%E6%9E%84"><span class="toc-number">3.</span> <span class="toc-text">先设计一个顺序表结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E5%BA%94%E8%AF%A5%E6%9C%89%E5%93%AA%E4%BA%9B"><span class="toc-number">4.</span> <span class="toc-text">常用操作应该有哪些</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E6%80%9D%E8%B7%AF%EF%BC%9A%E5%AE%B9%E9%87%8F%E4%B8%8D%E5%A4%9F%E6%97%B6%E5%85%88%E6%89%A9%E5%AE%B9"><span class="toc-number">5.</span> <span class="toc-text">关键思路：容量不够时先扩容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E4%BB%BD%E5%AE%8C%E6%95%B4%E5%8F%AF%E8%BF%90%E8%A1%8C%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-number">6.</span> <span class="toc-text">一份完整可运行的实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8F%92%E5%85%A5%E6%93%8D%E4%BD%9C%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E4%BB%8E%E5%90%8E%E5%BE%80%E5%89%8D%E7%A7%BB%E5%8A%A8"><span class="toc-number">7.</span> <span class="toc-text">插入操作为什么要从后往前移动</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E6%93%8D%E4%BD%9C%E7%9A%84%E6%9C%AC%E8%B4%A8"><span class="toc-number">8.</span> <span class="toc-text">删除操作的本质</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AD%A6%E9%A1%BA%E5%BA%8F%E8%A1%A8%E6%97%B6%E6%9C%80%E5%AE%B9%E6%98%93%E8%B8%A9%E7%9A%84%E5%9D%91"><span class="toc-number">9.</span> <span class="toc-text">学顺序表时最容易踩的坑</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%BF%98%E8%AE%B0%E6%A3%80%E6%9F%A5%E4%B8%8B%E6%A0%87%E6%98%AF%E5%90%A6%E5%90%88%E6%B3%95"><span class="toc-number">9.1.</span> <span class="toc-text">1. 忘记检查下标是否合法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%89%A9%E5%AE%B9%E6%88%90%E5%8A%9F%E5%89%8D%E5%B0%B1%E7%9B%B4%E6%8E%A5%E6%94%B9%E5%8E%9F%E6%8C%87%E9%92%88"><span class="toc-number">9.2.</span> <span class="toc-text">2. 扩容成功前就直接改原指针</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%8A%8A%E5%AE%B9%E9%87%8F%E5%92%8C%E5%85%83%E7%B4%A0%E4%B8%AA%E6%95%B0%E6%B7%B7%E4%B8%BA%E4%B8%80%E8%B0%88"><span class="toc-number">9.3.</span> <span class="toc-text">3. 把容量和元素个数混为一谈</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%BA%E5%BA%8F%E8%A1%A8%E7%9A%84%E6%97%B6%E9%97%B4%E5%A4%8D%E6%9D%82%E5%BA%A6"><span class="toc-number">10.</span> <span class="toc-text">顺序表的时间复杂度</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%AF%E4%BB%A5%E7%BB%A7%E7%BB%AD%E5%BE%80%E4%B8%8B%E6%89%A9%E5%B1%95%E4%BB%80%E4%B9%88"><span class="toc-number">11.</span> <span class="toc-text">可以继续往下扩展什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">12.</span> <span class="toc-text">总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/04/21/c-sequencelist-guide/" title="C 语言顺序表入门：从存储结构到常用操作实现"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="C 语言顺序表入门：从存储结构到常用操作实现"/></a><div class="content"><a class="title" href="/2026/04/21/c-sequencelist-guide/" title="C 语言顺序表入门：从存储结构到常用操作实现">C 语言顺序表入门：从存储结构到常用操作实现</a><time datetime="2026-04-21T12:12:42.000Z" title="发表于 2026-04-21 20:12:42">2026-04-21</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/19/%E6%B5%8B%E8%AF%95%E6%96%87%E7%AB%A0/" title="测试文章"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="测试文章"/></a><div class="content"><a class="title" href="/2026/04/19/%E6%B5%8B%E8%AF%95%E6%96%87%E7%AB%A0/" title="测试文章">测试文章</a><time datetime="2026-04-19T12:44:00.000Z" title="发表于 2026-04-19 20:44:00">2026-04-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/19/hello-world/" title="初识 Hexo"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="初识 Hexo"/></a><div class="content"><a class="title" href="/2026/04/19/hello-world/" title="初识 Hexo">初识 Hexo</a><time datetime="2026-04-19T08:41:32.772Z" title="发表于 2026-04-19 16:41:32">2026-04-19</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
