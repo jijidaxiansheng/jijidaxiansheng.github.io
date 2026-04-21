@@ -4291,12 +4291,12 @@ figure.highlight pre .javascript .function {
   content: '';
 }
 #page-header.full_page {
-  height: 72vh;
+  height: 100vh;
   background-attachment: fixed;
 }
 #page-header.full_page #site-info {
   position: absolute;
-  top: 42%;
+  top: 44%;
   padding: 0 10px;
   width: 100%;
 }
