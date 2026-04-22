@@ -1,0 +1,323 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子 | 向导</title><meta name="author" content="谭世杰"><meta name="copyright" content="谭世杰"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="fff4f7"><meta name="description" content="把 UART、IIC、SPI 三种常见通信方式拆开理解，整理它们的基本构成、时序图、速率和标准库收发例子。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子">
+<meta property="og:url" content="https://jijidaxiansheng.github.io/2026/04/22/stm32-uart-iic-spi-guide/index.html">
+<meta property="og:site_name" content="向导">
+<meta property="og:description" content="把 UART、IIC、SPI 三种常见通信方式拆开理解，整理它们的基本构成、时序图、速率和标准库收发例子。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://jijidaxiansheng.github.io/img/top.jpg">
+<meta property="article:published_time" content="2026-04-22T09:40:00.000Z">
+<meta property="article:author" content="谭世杰">
+<meta property="article:tag" content="I2C">
+<meta property="article:tag" content="SPI">
+<meta property="article:tag" content="STM32">
+<meta property="article:tag" content="UART">
+<meta property="article:tag" content="嵌入式">
+<meta property="article:tag" content="通信协议">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jijidaxiansheng.github.io/img/top.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子",
+  "url": "https://jijidaxiansheng.github.io/2026/04/22/stm32-uart-iic-spi-guide/",
+  "image": "https://jijidaxiansheng.github.io/img/top.jpg",
+  "datePublished": "2026-04-22T09:40:00.000Z",
+  "dateModified": "2026-04-22T09:40:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "谭世杰",
+      "url": "https://jijidaxiansheng.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://jijidaxiansheng.github.io/2026/04/22/stm32-uart-iic-spi-guide/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'fff4f7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css?v=20260422-2"><meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/bg.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">10</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-house"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-box-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/top.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">向导</span></a><a class="nav-page-title" href="/"><span class="site-name">STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-house"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-box-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="fa-fw post-meta-icon far fa-calendar-alt"></i><span class="post-meta-label">发表于</span><time datetime="2026-04-22T09:40:00.000Z" title="发表于 2026-04-22 17:40:00">2026-04-22</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%80/">编程基础</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>面试里一旦聊到 STM32 的外设，通信协议几乎绕不过去。最常见的就是 <code>UART</code>、<code>IIC</code> 和 <code>SPI</code>。很多时候大家会背初始化流程，也知道几个函数名，但一旦被追问“它们到底怎么传数据”“时序为什么这样设计”，就容易越说越乱。</p>
+<p>所以我把这部分单独整理成一篇。目标不是把协议手册一股脑背下来，而是先把三种通信方式最核心的构成、时序、速率和收发过程讲清楚。</p>
+<span id="more"></span>
+
+<h2 id="一、通信协议到底在“传”什么"><a href="#一、通信协议到底在“传”什么" class="headerlink" title="一、通信协议到底在“传”什么"></a>一、通信协议到底在“传”什么</h2><p>如果先把问题压缩一下，通信协议本质上是在解决一件事：</p>
+<p><strong>硬件到底是怎么把内存里的 0 和 1 送到引脚上的？</strong></p>
+<p>答案的核心，是移位寄存器和时序规则。</p>
+<h3 id="1-发送的本质"><a href="#1-发送的本质" class="headerlink" title="1. 发送的本质"></a>1. 发送的本质</h3><p>CPU 不会一位一位手动去翻转引脚。<br>通常是 CPU 先把一个字节写入外设的数据寄存器，然后：</p>
+<ul>
+<li>外设把数据装入移位寄存器</li>
+<li>再根据协议要求的时序</li>
+<li>一位一位地从引脚送出去</li>
+</ul>
+<p>接收时则反过来：</p>
+<ul>
+<li>外设按照时序在引脚采样</li>
+<li>把采样到的位拼成字节</li>
+<li>放进接收寄存器</li>
+<li>再通过标志位或者中断通知 CPU 来取</li>
+</ul>
+<p>这就是为什么很多通信外设都带有：</p>
+<ul>
+<li>数据寄存器</li>
+<li>状态寄存器</li>
+<li>中断标志</li>
+<li>波特率或时钟配置寄存器</li>
+</ul>
+<p>因为这些寄存器就是硬件通信过程的“控制面板”。</p>
+<h2 id="二、先把-UART、IIC、SPI-的基本构成捋清楚"><a href="#二、先把-UART、IIC、SPI-的基本构成捋清楚" class="headerlink" title="二、先把 UART、IIC、SPI 的基本构成捋清楚"></a>二、先把 UART、IIC、SPI 的基本构成捋清楚</h2><p>如果面试里一上来就聊波形，很容易越说越乱。更稳的说法是先把三种常见串行通信的基本构成拆开。</p>
+<h3 id="UART"><a href="#UART" class="headerlink" title="UART"></a>UART</h3><p>UART 是异步串口，最核心的构成只有两类：</p>
+<ul>
+<li><code>TX</code>：发送线</li>
+<li><code>RX</code>：接收线</li>
+</ul>
+<p>如果是最常见的全双工场景，那就是双方各自一根发、一根收。它没有独立时钟线，所以双方必须先约定好波特率、数据位、校验位和停止位。</p>
+<p>可以把它理解成：<strong>靠预先约定的节奏，加上起始位和停止位，完成一帧一帧的数据传输。</strong></p>
+<h3 id="IIC（I2C）"><a href="#IIC（I2C）" class="headerlink" title="IIC（I2C）"></a>IIC（I2C）</h3><p>IIC 其实就是 I2C，面试里这两个叫法经常混用。它的基本构成是：</p>
+<ul>
+<li><code>SCL</code>：时钟线</li>
+<li><code>SDA</code>：数据线</li>
+</ul>
+<p>它是同步通信，总线上的设备跟着 <code>SCL</code> 的节奏采样或输出数据。除此之外，IIC 还有几个很典型的协议元素：</p>
+<ul>
+<li>主机和从机</li>
+<li>7 位或 10 位地址</li>
+<li>应答位 <code>ACK/NACK</code></li>
+<li>开始条件和停止条件</li>
+</ul>
+<p>它更像是一条“共享总线”，不是谁想发就直接发，而是主机先发起，再按地址找到目标设备。</p>
+<h3 id="SPI"><a href="#SPI" class="headerlink" title="SPI"></a>SPI</h3><p>SPI 也是同步通信，但它和 IIC 的风格不一样。它的典型构成是：</p>
+<ul>
+<li><code>SCLK</code>：时钟线</li>
+<li><code>MOSI</code>：主机输出、从机输入</li>
+<li><code>MISO</code>：主机输入、从机输出</li>
+<li><code>CS/SS</code>：片选线</li>
+</ul>
+<p>它的特点是结构直白、速率高、通常支持全双工。主机通过片选线决定当前在和哪个从机通信，然后跟着时钟把数据一位一位移出去、移进来。</p>
+<p>可以把三者先记成一句话：</p>
+<ul>
+<li>UART：没有时钟，靠约定波特率和帧格式</li>
+<li>IIC：两根线共享总线，靠地址和应答工作</li>
+<li>SPI：多一根片选线，跟着时钟高速移位</li>
+</ul>
+<p>下面这张图很适合先建立整体印象，尤其是区分“有没有时钟线”和“全双工 &#x2F; 半双工”：</p>
+<p><img src="/img/stm32-uart-spi-iic-overview.png" alt="UART、单总线、SPI、I2C 通信方式对比图"></p>
+<h2 id="三、面试里常用的简化时序图"><a href="#三、面试里常用的简化时序图" class="headerlink" title="三、面试里常用的简化时序图"></a>三、面试里常用的简化时序图</h2><p>下面这些图不是芯片手册级别的精确波形，但很适合在面试回答里快速说明“开始、传输、结束”到底发生了什么。</p>
+<h3 id="UART-时序图"><a href="#UART-时序图" class="headerlink" title="UART 时序图"></a>UART 时序图</h3><p>UART 空闲时一般是高电平，发送开始先拉低起始位，然后按波特率依次发送数据位，最后回到高电平停止位。</p>
+<p><img src="/img/stm32-uart-timing-diagram.svg" alt="UART 简化时序图"></p>
+<p>UART 这里说的“波特率”通常就是我们最常见的通信速率。面试里如果被问到，常见回答可以是：</p>
+<ul>
+<li>常见波特率：<code>9600</code>、<code>19200</code>、<code>38400</code>、<code>57600</code>、<code>115200</code></li>
+<li>STM32 里一般通过波特率寄存器分频得到目标速率</li>
+<li>双方波特率必须一致，否则接收采样点会逐渐偏移，最后导致乱码</li>
+</ul>
+<p>一个最常见的收发例子就是：STM32 通过串口给上位机发送调试信息，同时接收上位机发来的命令。下面用标准库的风格举个最基础的例子：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">USART_SendData(USART1, <span class="string">&#x27;O&#x27;</span>);</span><br><span class="line"><span class="keyword">while</span> (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET);</span><br><span class="line"><span class="type">uint16_t</span> rx_byte = USART_ReceiveData(USART1);</span><br></pre></td></tr></table></figure>
+
+<p>这个例子里：</p>
+<ul>
+<li>发送：STM32 通过 <code>TX</code> 发出一个字符</li>
+<li>接收：STM32 通过 <code>RX</code> 收到一个字符</li>
+<li>标准库里通常就是先查标志位，再读写数据寄存器</li>
+<li>面试时可以顺手补一句：实际项目里更常见的是中断接收或 DMA 接收，而不是一直阻塞等待</li>
+</ul>
+<h3 id="IIC-时序图"><a href="#IIC-时序图" class="headerlink" title="IIC 时序图"></a>IIC 时序图</h3><p>IIC 最关键的不是“停止位”，而是开始条件和停止条件。判断边界时一定要看 <code>SCL</code> 为高的那个时刻。</p>
+<p><img src="/img/stm32-iic-timing-diagram.svg" alt="IIC 简化时序图"></p>
+<p>如果再细化一点，IIC 的一字节传输通常可以口述成：<code>START -&gt; 7位地址 + R/W -&gt; ACK -&gt; 8位数据 -&gt; ACK/NACK -&gt; STOP</code>。</p>
+<p>IIC 严格说更常用“时钟频率”来描述速率，但面试里很多人也会顺手把它叫成波特率。比较常见的速率有：</p>
+<ul>
+<li>标准模式：<code>100 kHz</code></li>
+<li>快速模式：<code>400 kHz</code></li>
+<li>Fast Mode Plus：<code>1 MHz</code></li>
+<li>High Speed Mode：<code>3.4 MHz</code></li>
+</ul>
+<p>IIC 很适合举“读传感器寄存器”的例子。比如 STM32 先写入目标寄存器地址，再从从设备读回 1 个字节数据。下面是标准库里常见的写法思路：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint8_t</span> value = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">I2C_GenerateSTART(I2C1, ENABLE);</span><br><span class="line"><span class="keyword">while</span> (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));</span><br><span class="line"></span><br><span class="line">I2C_Send7bitAddress(I2C1, <span class="number">0xD0</span>, I2C_Direction_Transmitter);</span><br><span class="line"><span class="keyword">while</span> (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));</span><br><span class="line"></span><br><span class="line">I2C_SendData(I2C1, <span class="number">0x75</span>);</span><br><span class="line"><span class="keyword">while</span> (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));</span><br><span class="line"></span><br><span class="line">I2C_GenerateSTART(I2C1, ENABLE);</span><br><span class="line"><span class="keyword">while</span> (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));</span><br><span class="line"></span><br><span class="line">I2C_Send7bitAddress(I2C1, <span class="number">0xD0</span>, I2C_Direction_Receiver);</span><br><span class="line"><span class="keyword">while</span> (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED));</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));</span><br><span class="line">value = I2C_ReceiveData(I2C1);</span><br><span class="line">I2C_GenerateSTOP(I2C1, ENABLE);</span><br></pre></td></tr></table></figure>
+
+<p>这个例子里：</p>
+<ul>
+<li>发送：主机先发从机地址和寄存器地址</li>
+<li>接收：再从该寄存器位置读回数据</li>
+<li>标准库里会明显看到 <code>START</code>、地址阶段、发数据、重复起始、再接收这几个步骤</li>
+<li>面试里如果继续展开，可以补一句：很多 IIC 设备读寄存器本质上都是“先写寄存器地址，再读数据”</li>
+</ul>
+<h3 id="SPI-时序图"><a href="#SPI-时序图" class="headerlink" title="SPI 时序图"></a>SPI 时序图</h3><p>SPI 没有像 UART 那样的起始位，也没有像 IIC 那样的开始条件。它更像是：片选拉低后，双方跟着时钟同步移位。</p>
+<p><img src="/img/stm32-spi-timing-diagram.svg" alt="SPI 简化时序图"></p>
+<p>SPI 严格来说通常也不叫“波特率”，而是叫 <code>SCLK</code> 时钟频率。不过面试时如果对方泛泛地问“SPI 波特率”，你也可以这样回答：</p>
+<ul>
+<li>SPI 速率由主机时钟决定，本质上看的是 <code>SCLK</code></li>
+<li>STM32 常通过预分频把外设时钟分成 <code>PCLK/2</code>、<code>/4</code>、<code>/8</code>、<code>/16</code> 这类频率</li>
+<li>常见 SPI 速率从几百 <code>kHz</code> 到几 <code>MHz</code>，很多器件能跑到十几 <code>MHz</code>，具体上限要看从设备手册</li>
+</ul>
+<p>SPI 常见的收发例子是：STM32 和 SPI Flash 或屏幕控制器通信。主机发命令字节的同时，也能同步收到从机返回的数据。下面也换成标准库风格：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">uint16_t</span> rx_data = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">GPIO_ResetBits(GPIOA, GPIO_Pin_4);</span><br><span class="line"></span><br><span class="line">SPI_I2S_SendData(SPI1, <span class="number">0x9F</span>);</span><br><span class="line"><span class="keyword">while</span> (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);</span><br><span class="line">rx_data = SPI_I2S_ReceiveData(SPI1);</span><br><span class="line"></span><br><span class="line">GPIO_SetBits(GPIOA, GPIO_Pin_4);</span><br></pre></td></tr></table></figure>
+
+<p>这个例子里：</p>
+<ul>
+<li><code>CS</code> 拉低，表示开始和目标从设备通信</li>
+<li>发送：主机发出读取命令</li>
+<li>接收：从机在时钟驱动下同步回传数据</li>
+<li>标准库里本质也是围绕发送&#x2F;接收标志位在操作数据寄存器</li>
+<li><code>CS</code> 拉高，表示本次传输结束</li>
+</ul>
+<h2 id="四、为什么-UART-和-IIC-的边界判断方式不一样"><a href="#四、为什么-UART-和-IIC-的边界判断方式不一样" class="headerlink" title="四、为什么 UART 和 IIC 的边界判断方式不一样"></a>四、为什么 UART 和 IIC 的边界判断方式不一样</h2><p>如果面试官继续往下问，UART 通常是最常见的切入点。</p>
+<p>UART 属于异步通信，没有单独的时钟线，所以接收方必须自己判断一帧数据什么时候开始、什么时候结束。</p>
+<p>于是就有了：</p>
+<ul>
+<li>起始位</li>
+<li>数据位</li>
+<li>可选校验位</li>
+<li>停止位</li>
+</ul>
+<p>它的典型过程是：</p>
+<ol>
+<li>总线空闲时保持高电平</li>
+<li>发送开始时，先拉低一个起始位</li>
+<li>接着按约定波特率发送数据位</li>
+<li>最后拉高停止位，告诉接收端这一帧结束了</li>
+</ol>
+<p>所以起始位和停止位，本质上是给“异步世界”建立边界感。</p>
+<p>和 UART 不同，I2C 是同步通信，它有专门的时钟线 <code>SCL</code>。</p>
+<p>这时候，接收端不需要自己猜节奏，只要跟着时钟采样就行。</p>
+<p>因此 I2C 的重点就不再是“靠停止位补边界”，而是用更明确的总线规则定义：</p>
+<ul>
+<li>起始条件：<code>SCL</code> 为高时，<code>SDA</code> 从高变低</li>
+<li>停止条件：<code>SCL</code> 为高时，<code>SDA</code> 从低变高</li>
+</ul>
+<p>这两个规则之所以重要，是因为它们和普通数据位变化严格区分开了。</p>
+<p>也就是说，I2C 并不是随便看一眼高低电平，而是通过“特定时刻的跳变”识别一帧通信的边界。</p>
+<h2 id="五、总结"><a href="#五、总结" class="headerlink" title="五、总结"></a>五、总结</h2><p>把通信协议单独拎出来之后会发现，很多面试题其实都围绕同一个核心：</p>
+<ul>
+<li>你是否知道通信引脚各自负责什么</li>
+<li>你是否能讲清楚数据为什么会按这个时序发送</li>
+<li>你是否能分清 UART、IIC、SPI 在时钟、边界和速率上的差别</li>
+<li>你是否能把库函数背后的寄存器和硬件行为对应起来</li>
+</ul>
+<p>如果只是记几个初始化函数，很容易答着答着就卡住。<br>但如果能从“引脚构成 -&gt; 时序规则 -&gt; 速率 -&gt; 收发过程”这条线往下讲，回答会稳很多。</p>
+</article><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/STM32/">STM32</a><a class="post-meta__tags" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/">嵌入式</a><a class="post-meta__tags" href="/tags/%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE/">通信协议</a><a class="post-meta__tags" href="/tags/UART/">UART</a><a class="post-meta__tags" href="/tags/I2C/">I2C</a><a class="post-meta__tags" href="/tags/SPI/">SPI</a></div><div class="post-share"><div class="social-share" data-image="/img/top.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/04/22/stm32-interview-three-questions/" title="面试复盘：STM32 底层结构和 Flash 读写，我是怎么重新梳理的"><img class="cover" src="/img/top.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">面试复盘：STM32 底层结构和 Flash 读写，我是怎么重新梳理的</div></div><div class="info-2"><div class="info-item-1">最近面试时被问到了两个很典型的底层问题。一个偏芯片整体结构，一个偏存储器行为。表面上看，它们分别在问“STM32 里面到底有什么”和“Flash 为什么这么麻烦”，但本质上都在考一件事：你有没有把 STM32 当成一个真正的硬件系统来理解，而不只是会调库函数。 这篇文章就把这两个问题重新整理成一条更清晰的主线，也当作一次自己的复盘。   面试里的 2 个问题这次遇到的问题大致是下面这 2 个方向：  STM32 最基础的构成是什么，底层到底有哪些东西？ Flash 在底层是怎么读写的？  如果单独回答，很容易变成零散知识点。但把它们连起来看，其实是在从“芯片整体结构”一步步往“存储器行为”深入。 一、先回答最根本的问题：STM32 底层到底由什么组成很多时候我们写代码，只能看到 main()、外设初始化函数和中断回调，但这些代码真正跑起来，背后依赖的是 STM32 内部完整的硬件结构。 从最基础的角度看，STM32 可以拆成下面几部分：  内核：也就是 Cortex-M 处理器，负责执行指令。 存储器：包括 Flash 和 SRAM。 总线：负责连接内核、存储器和外设。 外设：G...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/04/22/stm32-interview-three-questions/" title="面试复盘：STM32 底层结构和 Flash 读写，我是怎么重新梳理的"><img class="cover" src="/img/top.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-22</div><div class="info-item-2">面试复盘：STM32 底层结构和 Flash 读写，我是怎么重新梳理的</div></div><div class="info-2"><div class="info-item-1">最近面试时被问到了两个很典型的底层问题。一个偏芯片整体结构，一个偏存储器行为。表面上看，它们分别在问“STM32 里面到底有什么”和“Flash 为什么这么麻烦”，但本质上都在考一件事：你有没有把 STM32 当成一个真正的硬件系统来理解，而不只是会调库函数。 这篇文章就把这两个问题重新整理成一条更清晰的主线，也当作一次自己的复盘。   面试里的 2 个问题这次遇到的问题大致是下面这 2 个方向：  STM32 最基础的构成是什么，底层到底有哪些东西？ Flash 在底层是怎么读写的？  如果单独回答，很容易变成零散知识点。但把它们连起来看，其实是在从“芯片整体结构”一步步往“存储器行为”深入。 一、先回答最根本的问题：STM32 底层到底由什么组成很多时候我们写代码，只能看到 main()、外设初始化函数和中断回调，但这些代码真正跑起来，背后依赖的是 STM32 内部完整的硬件结构。 从最基础的角度看，STM32 可以拆成下面几部分：  内核：也就是 Cortex-M 处理器，负责执行指令。 存储器：包括 Flash 和 SRAM。 总线：负责连接内核、存储器和外设。 外设：G...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">谭世杰</div><div class="author-info-description">记录成长与学习的足迹</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">10</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/jijidaxiansheng"><i class="fab fa-github"></i><span>GitHub</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/jijidaxiansheng" target="_blank" title="GitHub"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到我的博客</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%80%9A%E4%BF%A1%E5%8D%8F%E8%AE%AE%E5%88%B0%E5%BA%95%E5%9C%A8%E2%80%9C%E4%BC%A0%E2%80%9D%E4%BB%80%E4%B9%88"><span class="toc-number">1.</span> <span class="toc-text">一、通信协议到底在“传”什么</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%8F%91%E9%80%81%E7%9A%84%E6%9C%AC%E8%B4%A8"><span class="toc-number">1.1.</span> <span class="toc-text">1. 发送的本质</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%85%88%E6%8A%8A-UART%E3%80%81IIC%E3%80%81SPI-%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%9E%84%E6%88%90%E6%8D%8B%E6%B8%85%E6%A5%9A"><span class="toc-number">2.</span> <span class="toc-text">二、先把 UART、IIC、SPI 的基本构成捋清楚</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#UART"><span class="toc-number">2.1.</span> <span class="toc-text">UART</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#IIC%EF%BC%88I2C%EF%BC%89"><span class="toc-number">2.2.</span> <span class="toc-text">IIC（I2C）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SPI"><span class="toc-number">2.3.</span> <span class="toc-text">SPI</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E9%9D%A2%E8%AF%95%E9%87%8C%E5%B8%B8%E7%94%A8%E7%9A%84%E7%AE%80%E5%8C%96%E6%97%B6%E5%BA%8F%E5%9B%BE"><span class="toc-number">3.</span> <span class="toc-text">三、面试里常用的简化时序图</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#UART-%E6%97%B6%E5%BA%8F%E5%9B%BE"><span class="toc-number">3.1.</span> <span class="toc-text">UART 时序图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#IIC-%E6%97%B6%E5%BA%8F%E5%9B%BE"><span class="toc-number">3.2.</span> <span class="toc-text">IIC 时序图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SPI-%E6%97%B6%E5%BA%8F%E5%9B%BE"><span class="toc-number">3.3.</span> <span class="toc-text">SPI 时序图</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%B8%BA%E4%BB%80%E4%B9%88-UART-%E5%92%8C-IIC-%E7%9A%84%E8%BE%B9%E7%95%8C%E5%88%A4%E6%96%AD%E6%96%B9%E5%BC%8F%E4%B8%8D%E4%B8%80%E6%A0%B7"><span class="toc-number">4.</span> <span class="toc-text">四、为什么 UART 和 IIC 的边界判断方式不一样</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">五、总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/04/22/stm32-uart-iic-spi-guide/" title="STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子"/></a><div class="content"><a class="title" href="/2026/04/22/stm32-uart-iic-spi-guide/" title="STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子">STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子</a><time datetime="2026-04-22T09:40:00.000Z" title="发表于 2026-04-22 17:40:00">2026-04-22</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/22/stm32-interview-three-questions/" title="面试复盘：STM32 底层结构和 Flash 读写，我是怎么重新梳理的"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="面试复盘：STM32 底层结构和 Flash 读写，我是怎么重新梳理的"/></a><div class="content"><a class="title" href="/2026/04/22/stm32-interview-three-questions/" title="面试复盘：STM32 底层结构和 Flash 读写，我是怎么重新梳理的">面试复盘：STM32 底层结构和 Flash 读写，我是怎么重新梳理的</a><time datetime="2026-04-21T20:20:00.000Z" title="发表于 2026-04-22 04:20:00">2026-04-22</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/21/c-sequencelist-guide/" title="C 语言顺序表入门：从存储结构到常用操作实现"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="C 语言顺序表入门：从存储结构到常用操作实现"/></a><div class="content"><a class="title" href="/2026/04/21/c-sequencelist-guide/" title="C 语言顺序表入门：从存储结构到常用操作实现">C 语言顺序表入门：从存储结构到常用操作实现</a><time datetime="2026-04-21T12:12:42.000Z" title="发表于 2026-04-21 20:12:42">2026-04-21</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script src="/js/default-light.js?v=20260422-2"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
