@@ -1,0 +1,404 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6 | 向导</title><meta name="author" content="谭世杰"><meta name="copyright" content="谭世杰"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="fff4f7"><meta name="description" content="围绕 STM32F103 + W5500 的 OTA 升级需求，梳理 IAR 配置、单区&#x2F;双区方案、外挂 Flash、掉电保护与回滚设计，并说明为什么最终选择了 CBT6。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6">
+<meta property="og:url" content="https://jijidaxiansheng.github.io/2026/05/07/stm32-ota-design-with-w5500/index.html">
+<meta property="og:site_name" content="向导">
+<meta property="og:description" content="围绕 STM32F103 + W5500 的 OTA 升级需求，梳理 IAR 配置、单区&#x2F;双区方案、外挂 Flash、掉电保护与回滚设计，并说明为什么最终选择了 CBT6。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://jijidaxiansheng.github.io/img/top.jpg">
+<meta property="article:published_time" content="2026-05-07T02:50:00.000Z">
+<meta property="article:author" content="谭世杰">
+<meta property="article:tag" content="Bootloader">
+<meta property="article:tag" content="IAR">
+<meta property="article:tag" content="OTA">
+<meta property="article:tag" content="STM32">
+<meta property="article:tag" content="W5500">
+<meta property="article:tag" content="嵌入式">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://jijidaxiansheng.github.io/img/top.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6",
+  "url": "https://jijidaxiansheng.github.io/2026/05/07/stm32-ota-design-with-w5500/",
+  "image": "https://jijidaxiansheng.github.io/img/top.jpg",
+  "datePublished": "2026-05-07T02:50:00.000Z",
+  "dateModified": "2026-05-07T02:50:00.000Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "谭世杰",
+      "url": "https://jijidaxiansheng.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/favicon.ico?v=20260422-3"><link rel="canonical" href="https://jijidaxiansheng.github.io/2026/05/07/stm32-ota-design-with-w5500/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.5.4"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.1.0/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', 'fff4f7')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css?v=20260422-2"><link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260422-3"><link rel="shortcut icon" href="/favicon.ico?v=20260422-3"><link rel="apple-touch-icon" href="/img/favicon-pixel-v2.png?v=20260422-3"><meta name="generator" content="Hexo 8.1.1"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/bg.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">20</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-house"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-box-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/top.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">向导</span></a><a class="nav-page-title" href="/"><span class="site-name">STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-house"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-box-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-user"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="fa-fw post-meta-icon far fa-calendar-alt"></i><span class="post-meta-label">发表于</span><time datetime="2026-05-07T02:50:00.000Z" title="发表于 2026-05-07 10:50:00">2026-05-07</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BC%96%E7%A8%8B%E5%9F%BA%E7%A1%80/">编程基础</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>当讨论 STM32 的 OTA 升级时，真正难的通常不是“能不能下到固件”，而是整套方案怎么在有限资源里跑得稳。</p>
+<p>尤其是把条件收缩到 <code>STM32F103</code> 这类资源并不宽裕的芯片，再加上 <code>W5500</code> 这种以太网控制器，问题就会变得非常现实：</p>
+<ul>
+<li>固件从哪下？</li>
+<li>下到哪？</li>
+<li>Bootloader 怎么接手？</li>
+<li>单区和双区到底怎么选？</li>
+<li>掉电时怎么避免变砖？</li>
+<li><code>C8T6</code> 的空间到底够不够？</li>
+</ul>
+<p>我把这部分单独整理成一篇，也顺便把最后为什么从 <code>C8T6</code> 转向 <code>CBT6</code> 讲清楚。</p>
+<span id="more"></span>
+
+<h2 id="一、先说结论：OTA-从来不是“只加一个下载功能”"><a href="#一、先说结论：OTA-从来不是“只加一个下载功能”" class="headerlink" title="一、先说结论：OTA 从来不是“只加一个下载功能”"></a>一、先说结论：OTA 从来不是“只加一个下载功能”</h2><p>很多人第一次想 OTA，会先盯着“通过网络把新固件收下来”。但真正完整的 OTA 方案，至少要同时回答 4 个问题：</p>
+<ol>
+<li>新固件怎么从服务器传到设备</li>
+<li>新固件暂存在哪</li>
+<li>Bootloader 怎么判断该不该切换</li>
+<li>升级失败时怎么回滚</li>
+</ol>
+<p>也就是说，OTA 本质上不是一个下载动作，而是一套完整的启动和存储策略。</p>
+<h2 id="二、在-STM32F103-W5500-这个组合里，W5500-负责什么"><a href="#二、在-STM32F103-W5500-这个组合里，W5500-负责什么" class="headerlink" title="二、在 STM32F103 + W5500 这个组合里，W5500 负责什么"></a>二、在 <code>STM32F103 + W5500</code> 这个组合里，W5500 负责什么</h2><p><code>W5500</code> 本质上是一个带硬件 TCP&#x2F;IP 协议栈的以太网控制器，它通过 <code>SPI</code> 和 STM32 通信。</p>
+<p>所以在这个方案里可以这样理解分工：</p>
+<ul>
+<li><code>W5500</code> 负责联网和 Socket 收发</li>
+<li><code>STM32</code> 负责应用逻辑、OTA 状态机和 Flash 管理</li>
+</ul>
+<p>也就是说，新固件确实可以通过云端服务器下发到 STM32，但中间不是“云直接写芯片 Flash”，而是：</p>
+<ol>
+<li>服务器提供固件文件</li>
+<li>STM32 驱动 W5500 建立 TCP&#x2F;HTTP 连接</li>
+<li>STM32 分包接收固件数据</li>
+<li>把固件写入目标存储区</li>
+<li>校验通过后再交给 Bootloader 处理</li>
+</ol>
+<p>W5500 只是把网络通道打通，真正的升级控制权还是在 MCU 手里。</p>
+<h2 id="三、如果用-IAR-做-OTA，最关键的是哪几处配置"><a href="#三、如果用-IAR-做-OTA，最关键的是哪几处配置" class="headerlink" title="三、如果用 IAR 做 OTA，最关键的是哪几处配置"></a>三、如果用 IAR 做 OTA，最关键的是哪几处配置</h2><p>IAR 本身不会“一键帮你做 OTA”，但它会直接影响 OTA 方案能否落地，最关键的是下面三部分。</p>
+<h3 id="1-链接地址配置"><a href="#1-链接地址配置" class="headerlink" title="1. 链接地址配置"></a>1. 链接地址配置</h3><p>不管你是 Bootloader + APP，还是 A&#x2F;B 双区，第一件事都是把不同工程放到不同地址。</p>
+<p>在 IAR 里，核心就是改 <code>.icf</code> 链接配置文件，让：</p>
+<ul>
+<li>Bootloader 落在起始 Flash 区</li>
+<li>APP A 落在自己的起始地址</li>
+<li>APP B 或下载区落在另一个地址</li>
+</ul>
+<p>如果地址不分开，后果很简单：新固件会直接把 Bootloader 或当前 APP 覆盖掉。</p>
+<h3 id="2-输出-BIN"><a href="#2-输出-BIN" class="headerlink" title="2. 输出 BIN"></a>2. 输出 <code>BIN</code></h3><p>OTA 升级包通常更适合用 <code>BIN</code>，因为它最接近纯净固件镜像，体积也更可控。</p>
+<p>在 IAR 里，一般会通过 <code>Output Converter</code> 额外生成 <code>Raw binary</code> 格式的文件，用来作为服务器侧下发的固件包。</p>
+<h3 id="3-校验信息"><a href="#3-校验信息" class="headerlink" title="3. 校验信息"></a>3. 校验信息</h3><p>如果没有校验，OTA 就只剩“希望它没坏”。这显然不够工程化。</p>
+<p>比较常见的做法是：</p>
+<ul>
+<li>固件头里带版本号、长度、CRC</li>
+<li>或者在链接&#x2F;后处理阶段自动把 CRC 追加到镜像里</li>
+</ul>
+<p>Bootloader 启动时先校验，只有通过才允许切换到新固件。</p>
+<h2 id="四、单区-OTA-和双区-OTA，真正差在哪"><a href="#四、单区-OTA-和双区-OTA，真正差在哪" class="headerlink" title="四、单区 OTA 和双区 OTA，真正差在哪"></a>四、单区 OTA 和双区 OTA，真正差在哪</h2><p>这是方案设计里最核心的分叉。</p>
+<h3 id="1-单区-OTA"><a href="#1-单区-OTA" class="headerlink" title="1. 单区 OTA"></a>1. 单区 OTA</h3><p>单区 OTA 可以理解成：</p>
+<ul>
+<li>Bootloader 占一小块固定区域</li>
+<li>APP 只有一个运行区</li>
+<li>新固件先放到别的地方</li>
+<li>最后由 Bootloader 把它搬进 APP 区</li>
+</ul>
+<p>这个“别的地方”通常有两种来源：</p>
+<ul>
+<li>MCU 内部另一块预留区</li>
+<li>外挂 Flash</li>
+</ul>
+<p>单区方案的特点是：</p>
+<ul>
+<li>对内部 Flash 容量要求低</li>
+<li>结构相对直接</li>
+<li>升级时需要“搬运”</li>
+</ul>
+<p>它的痛点也很明显：</p>
+<ul>
+<li>搬运阶段设备不能正常跑主业务</li>
+<li>升级过程中如果掉电，风险集中在“正在擦写运行区”的阶段</li>
+</ul>
+<h3 id="2-双区-OTA"><a href="#2-双区-OTA" class="headerlink" title="2. 双区 OTA"></a>2. 双区 OTA</h3><p>双区 OTA 也常叫 A&#x2F;B 区升级，核心思想是：</p>
+<ul>
+<li>A 区跑当前稳定固件</li>
+<li>B 区接收新固件</li>
+<li>校验通过后只改启动指向</li>
+<li>新固件运行异常时还能退回老区</li>
+</ul>
+<p>它最大的优点是：</p>
+<ul>
+<li>当前业务可以持续运行到最后切换前</li>
+<li>回滚能力更强</li>
+<li>整体可靠性更高</li>
+</ul>
+<p>代价则是：</p>
+<ul>
+<li>占更多 Flash 空间</li>
+<li>Bootloader 逻辑更复杂</li>
+<li>需要更仔细地管理版本和启动标志</li>
+</ul>
+<h2 id="五、STM32F103C8T6-为什么会很快卡在空间上"><a href="#五、STM32F103C8T6-为什么会很快卡在空间上" class="headerlink" title="五、STM32F103C8T6 为什么会很快卡在空间上"></a>五、<code>STM32F103C8T6</code> 为什么会很快卡在空间上</h2><p><code>STM32F103C8T6</code> 最现实的问题不是功能不够，而是 Flash 太紧。</p>
+<p>它的公开规格通常是：</p>
+<ul>
+<li>Flash：<code>64 KB</code></li>
+<li>SRAM：<code>20 KB</code></li>
+</ul>
+<p>一旦你要同时放进下面这些东西：</p>
+<ul>
+<li>Bootloader</li>
+<li>主应用</li>
+<li>W5500 驱动</li>
+<li>网络下载逻辑</li>
+<li>升级状态管理</li>
+<li>校验和版本信息</li>
+</ul>
+<p>空间压力会马上上来。</p>
+<p>如果还想做内部双区 A&#x2F;B，那压力更大。因为 64KB 要同时容纳：</p>
+<ul>
+<li>Bootloader</li>
+<li>APP A</li>
+<li>APP B</li>
+<li>参数页或升级标志页</li>
+</ul>
+<p>这对大多数稍微像样一点的项目来说都非常吃紧，甚至根本放不下。</p>
+<h2 id="六、外挂-Flash-在-OTA-里解决了什么问题"><a href="#六、外挂-Flash-在-OTA-里解决了什么问题" class="headerlink" title="六、外挂 Flash 在 OTA 里解决了什么问题"></a>六、外挂 Flash 在 OTA 里解决了什么问题</h2><p>这也是为什么很多 <code>C8T6</code> 方案最后会引入外挂 <code>SPI Flash</code>。</p>
+<p>外挂 Flash 的价值，不只是“多一点容量”，而是给 OTA 留出一个独立的暂存区。</p>
+<p>典型流程会变成：</p>
+<ol>
+<li>当前 APP 正常运行</li>
+<li>APP 通过 W5500 从服务器下载新固件</li>
+<li>先把新固件写进外挂 Flash</li>
+<li>下载完成后做 CRC 校验</li>
+<li>重启进入 Bootloader</li>
+<li>Bootloader 再把外挂 Flash 里的新固件搬到内部 APP 区</li>
+</ol>
+<p>这样做的好处是：</p>
+<ul>
+<li><code>C8T6</code> 内部 Flash 压力小很多</li>
+<li>当前 APP 可以边运行边下载</li>
+<li>固件文件有了独立缓存区</li>
+</ul>
+<p>但它也带来新的代价：</p>
+<ul>
+<li>BOM 增加</li>
+<li>硬件复杂度增加</li>
+<li>升级链路变长</li>
+<li>仍然存在“搬运阶段”的风险控制问题</li>
+</ul>
+<h2 id="七、掉电保护和回滚，才是-OTA-方案是否成熟的分水岭"><a href="#七、掉电保护和回滚，才是-OTA-方案是否成熟的分水岭" class="headerlink" title="七、掉电保护和回滚，才是 OTA 方案是否成熟的分水岭"></a>七、掉电保护和回滚，才是 OTA 方案是否成熟的分水岭</h2><p>很多 OTA 方案“能升级”，但不一定“抗失败”。</p>
+<p>真正的工程问题通常出在下面这些场景：</p>
+<ul>
+<li>下载一半断网</li>
+<li>固件没下完却被误认为有效</li>
+<li>写 Flash 到一半掉电</li>
+<li>新固件能启动，但网络逻辑有 Bug，再也连不上服务器</li>
+</ul>
+<p>所以掉电保护和回滚必须提前设计。</p>
+<h3 id="1-最基本的掉电保护思路"><a href="#1-最基本的掉电保护思路" class="headerlink" title="1. 最基本的掉电保护思路"></a>1. 最基本的掉电保护思路</h3><p>无论单区还是双区，至少要把升级状态做成一个明确状态机，比如：</p>
+<ul>
+<li><code>IDLE</code>：无升级</li>
+<li><code>DOWNLOADING</code>：正在下载</li>
+<li><code>DOWNLOADED</code>：下载完待校验</li>
+<li><code>READY_TO_SWITCH</code>：校验通过，等待切换</li>
+<li><code>TESTING_NEW_APP</code>：新固件试运行</li>
+<li><code>CONFIRMED</code>：新固件确认成功</li>
+</ul>
+<p>这样设备重启后，不是“猜自己到哪一步了”，而是能根据状态继续处理。</p>
+<h3 id="2-单区方案里最危险的阶段"><a href="#2-单区方案里最危险的阶段" class="headerlink" title="2. 单区方案里最危险的阶段"></a>2. 单区方案里最危险的阶段</h3><p>单区方案最危险的时候，通常是：</p>
+<ul>
+<li>Bootloader 已经开始擦内部 APP 区</li>
+<li>但新固件还没完整搬运完</li>
+</ul>
+<p>这时候如果掉电，运行区可能处于半写状态，设备就有变砖风险。</p>
+<p>所以单区方案往往更依赖：</p>
+<ul>
+<li>外挂 Flash 中保留完整镜像</li>
+<li>Bootloader 支持断点恢复或重新搬运</li>
+<li>明确的镜像有效标志和 CRC</li>
+</ul>
+<h3 id="3-双区方案为什么更适合做回滚"><a href="#3-双区方案为什么更适合做回滚" class="headerlink" title="3. 双区方案为什么更适合做回滚"></a>3. 双区方案为什么更适合做回滚</h3><p>双区的优势就在这里。</p>
+<p>因为老固件 A 仍然完好，新固件 B 只是先下载到另一个区域，所以即便：</p>
+<ul>
+<li>B 区镜像损坏</li>
+<li>B 区启动失败</li>
+<li>B 区运行后看门狗复位</li>
+</ul>
+<p>Bootloader 也能根据状态和“确认标志”退回 A 区。</p>
+<p>这就是 A&#x2F;B 双区在可靠性上的真正价值。</p>
+<h3 id="4-看门狗是回滚机制里很关键的一环"><a href="#4-看门狗是回滚机制里很关键的一环" class="headerlink" title="4. 看门狗是回滚机制里很关键的一环"></a>4. 看门狗是回滚机制里很关键的一环</h3><p>比较稳的做法通常是：</p>
+<ol>
+<li>Bootloader 跳转到新固件</li>
+<li>新固件在限定时间内完成关键自检</li>
+<li>比如网络能正常拉起、主任务能进入稳定状态</li>
+<li>然后由新固件主动写入“确认成功”标志</li>
+</ol>
+<p>如果新固件来不及确认就复位了，Bootloader 下次启动时就知道：</p>
+<p><strong>这次升级没成功，应该回滚。</strong></p>
+<h2 id="八、那最后为什么我会从-C8T6-走到-CBT6"><a href="#八、那最后为什么我会从-C8T6-走到-CBT6" class="headerlink" title="八、那最后为什么我会从 C8T6 走到 CBT6"></a>八、那最后为什么我会从 <code>C8T6</code> 走到 <code>CBT6</code></h2><p>核心原因其实很朴素：<strong>空间余量。</strong></p>
+<p><code>CBT6</code> 相比 <code>C8T6</code> 最大的变化，就是内部 Flash 从 <code>64 KB</code> 提升到 <code>128 KB</code>。这个提升带来的意义，不只是“程序能放更多”，而是整个 OTA 设计突然宽松了很多。</p>
+<p>它至少解决了三个现实问题：</p>
+<h3 id="1-Bootloader-和-APP-不再挤成一团"><a href="#1-Bootloader-和-APP-不再挤成一团" class="headerlink" title="1. Bootloader 和 APP 不再挤成一团"></a>1. Bootloader 和 APP 不再挤成一团</h3><p>在 <code>C8T6</code> 上，Bootloader 每多占几 KB，主程序就更紧几 KB。你会很快被迫去抠每一页 Flash。</p>
+<p>到了 <code>CBT6</code>，基本的 Bootloader、主应用和参数区划分会从容很多。</p>
+<h3 id="2-双区方案开始变得“有讨论价值”"><a href="#2-双区方案开始变得“有讨论价值”" class="headerlink" title="2. 双区方案开始变得“有讨论价值”"></a>2. 双区方案开始变得“有讨论价值”</h3><p><code>128 KB</code> 不代表你一定能豪华地做 OTA，但至少：</p>
+<ul>
+<li>Bootloader + A&#x2F;B 双区</li>
+<li>或 Bootloader + APP + 较完整的升级缓存设计</li>
+</ul>
+<p>这类方案不再一上来就因为容量完全不可行而被排除。</p>
+<p>当然，前提还是你的 APP 体积得控制得住。如果后期功能继续膨胀，外挂 Flash 仍然可能是必要选项。</p>
+<h3 id="3-工程复杂度下降了"><a href="#3-工程复杂度下降了" class="headerlink" title="3. 工程复杂度下降了"></a>3. 工程复杂度下降了</h3><p>很多时候，最贵的不是多几块钱物料，而是为了省那点空间，把软件架构拧得很复杂。</p>
+<p>从 <code>C8T6</code> 到 <code>CBT6</code>，本质上是在用更可接受的 Flash 容量，换：</p>
+<ul>
+<li>更稳的 OTA 设计</li>
+<li>更清晰的分区</li>
+<li>更小的实现压力</li>
+<li>更好的后续维护空间</li>
+</ul>
+<h2 id="九、我现在更认可的方案判断方式"><a href="#九、我现在更认可的方案判断方式" class="headerlink" title="九、我现在更认可的方案判断方式"></a>九、我现在更认可的方案判断方式</h2><p>如果项目还在样机或早期阶段，我会优先按这套顺序做选择：</p>
+<ol>
+<li>先估算主程序最终体积</li>
+<li>再决定单区还是双区</li>
+<li>再判断是否必须外挂 Flash</li>
+<li>最后再看芯片容量要不要升级</li>
+</ol>
+<p>如果一开始就能看出 <code>C8T6</code> 容量很悬，那尽早换到 <code>CBT6</code>，往往比后期做痛苦的压缩和补丁更划算。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p><code>STM32F103 + W5500</code> 的 OTA 方案，真正要解决的不是“连上网”，而是下面这整套问题：</p>
+<ul>
+<li>固件怎么下</li>
+<li>固件先放哪</li>
+<li>Bootloader 怎么接管</li>
+<li>升级失败怎么保护</li>
+<li>新固件异常怎么回滚</li>
+</ul>
+<p>如果用 <code>C8T6</code>，你通常会更容易走向：</p>
+<ul>
+<li>单区</li>
+<li>外挂 Flash</li>
+<li>严格的搬运和校验设计</li>
+</ul>
+<p>而我最后选择 <code>CBT6</code>，核心就是想给 OTA 留出更合理的空间余量，让 Bootloader、分区和后续迭代不要从第一天开始就被 64KB 卡死。</p>
+<p>对我来说，这个选择不是单纯“多花一点钱换芯片”，而是在用更低的整体开发风险，换一套更可持续的升级方案。</p>
+</article><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/STM32/">STM32</a><a class="post-meta__tags" href="/tags/%E5%B5%8C%E5%85%A5%E5%BC%8F/">嵌入式</a><a class="post-meta__tags" href="/tags/OTA/">OTA</a><a class="post-meta__tags" href="/tags/W5500/">W5500</a><a class="post-meta__tags" href="/tags/IAR/">IAR</a><a class="post-meta__tags" href="/tags/Bootloader/">Bootloader</a></div><div class="post-share"><div class="social-share" data-image="/img/top.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/05/07/stm32-build-and-flash-flow/" title="STM32 烧录与构建链路复盘：从预处理到 ELF、HEX、BIN，再到代码烧进 Flash"><img class="cover" src="/img/top.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">STM32 烧录与构建链路复盘：从预处理到 ELF、HEX、BIN，再到代码烧进 Flash</div></div><div class="info-2"><div class="info-item-1">STM32 相关的问题，一旦从“写代码”继续往下问，就很容易走到一条完整链路上：  代码是怎么变成固件文件的？ hex 和 bin 有什么区别？ 烧录器到底是怎么把程序写进芯片的？ 预处理阶段到底做了什么？  这些问题表面上分属编译原理和硬件下载两个方向，但如果把流程串起来，其实就是一条从源代码走到 Flash 的完整路径。   一、先把整条链路压缩成一行如果只用一行概括，STM32 工程从源码到芯片，大致经历的是： 源代码 -&gt; 预处理 -&gt; 编译 -&gt; 汇编 -&gt; 链接 -&gt; ELF&#x2F;AXF -&gt; HEX&#x2F;BIN -&gt; 烧录到 Flash -&gt; 复位运行 这条链里，前半段是工具链在处理“代码怎么变成机器指令”，后半段是在处理“这些机器指令怎么被写进目标芯片”。 二、预处理阶段到底在做什么很多人知道预处理是第一步，但容易把它想得很“高级”。实际上，预处理器做的大多是文本层面的展开和裁剪。 它主要处理 4 类事情： 1. 展开 #include当代码里写了： 1#include &quot;stm32f10x.h...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/04/22/stm32-uart-iic-spi-guide/" title="STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子"><img class="cover" src="/img/top.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-22</div><div class="info-item-2">STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子</div></div><div class="info-2"><div class="info-item-1">面试里一旦聊到 STM32 的外设，通信协议几乎绕不过去。最常见的就是 UART、IIC 和 SPI。很多时候大家会背初始化流程，也知道几个函数名，但一旦被追问“它们到底怎么传数据”“时序为什么这样设计”，就容易越说越乱。 所以我把这部分单独整理成一篇。目标不是把协议手册一股脑背下来，而是先把三种通信方式最核心的构成、时序、速率和收发过程讲清楚。   一、通信协议到底在“传”什么如果先把问题压缩一下，通信协议本质上是在解决一件事： 硬件到底是怎么把内存里的 0 和 1 送到引脚上的？ 答案的核心，是移位寄存器和时序规则。 1. 发送的本质CPU 不会一位一位手动去翻转引脚。通常是 CPU 先把一个字节写入外设的数据寄存器，然后：  外设把数据装入移位寄存器 再根据协议要求的时序 一位一位地从引脚送出去  接收时则反过来：  外设按照时序在引脚采样 把采样到的位拼成字节 放进接收寄存器 再通过标志位或者中断通知 CPU 来取  这就是为什么很多通信外设都带有：  数据寄存器 状态寄存器 中断标志 波特率或时钟配置寄存器  因为这些寄存器就是硬件通信过程的“控制面板”。 二、先把 U...</div></div></div></a><a class="pagination-related" href="/2026/04/22/stm32-interview-three-questions/" title="面试复盘：STM32 底层结构、存储器映射和 Flash 读写，我是怎么重新梳理的"><img class="cover" src="/img/top.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-04-22</div><div class="info-item-2">面试复盘：STM32 底层结构、存储器映射和 Flash 读写，我是怎么重新梳理的</div></div><div class="info-2"><div class="info-item-1">最近面试时被问到了一串很典型的 STM32 底层问题。表面上看，这些问题分散在芯片结构、存储器、烧录和 Flash 读写几个方向，但本质上都在考一件事：你有没有把 STM32 当成一个完整的硬件系统理解，而不只是会调几个库函数。 这篇文章就把这条思路重新捋一遍，从“芯片里有什么”一路走到“程序为什么能从 Flash 里跑”“Flash 为什么好读不好写”。如果把这条线讲顺了，很多面试追问其实就不会乱。   面试里这一串问题，本质上在考什么我这次被追问的内容，大致可以归成下面几类：  STM32 最基础的构成是什么，底层到底有哪些东西？ STM32 的存储器映射大致怎么分布？ SRAM 和 Flash 的用途分别是什么？ 为什么程序能直接从 Flash 里运行？ Flash 在底层是怎么读写的，为什么擦除按页或扇区？ 写 Flash 时怎么避免覆盖原来的数据？  如果把这些问题一个个孤立回答，很容易变成零散知识点。但把它们连起来看，其实就是在沿着这条主线往下走： 芯片结构 -&gt; 地址空间 -&gt; 存储器分工 -&gt; 程序执行方式 -&gt; Flash 物理限制 -&...</div></div></div></a><a class="pagination-related" href="/2026/05/07/stm32-software-iic-vs-hardware-iic/" title="STM32 IIC 选型复盘：软件 IIC 和硬件 IIC 到底差在哪，项目里该怎么选"><img class="cover" src="/img/top.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-05-07</div><div class="info-item-2">STM32 IIC 选型复盘：软件 IIC 和硬件 IIC 到底差在哪，项目里该怎么选</div></div><div class="info-2"><div class="info-item-1">IIC 这个问题在 STM32 面试里非常常见。表面上大家都知道一句“硬件 IIC 靠外设，软件 IIC 靠 GPIO 模拟”，但如果继续追问“为什么硬件 IIC 更省 CPU”“软件 IIC 为什么更灵活”“项目里到底该怎么选”，很多回答就开始发散了。 所以我把这部分单独整理成一篇。目标不是背定义，而是把两种方案背后的执行逻辑、优缺点和适用场景讲透。   一、先用一句话说清两者的根本区别软件 IIC 和硬件 IIC 的根本区别，不在于协议本身变了，而在于： I2C 总线时序到底是谁生成的。  硬件 IIC：由 MCU 内部的 I2C 外设模块自动生成时序。 软件 IIC：由 CPU 控制普通 GPIO，再配合延时函数“手搓”时序。  也就是说，不管是哪一种，最终都要在 SCL 和 SDA 上形成符合 I2C 协议的波形。区别只是在于，这个波形是“硬件自动输出”还是“软件一点点翻出来”。 二、硬件 IIC 到底在替我们做什么很多人会把硬件 IIC 理解成“库函数更方便”，但这其实说浅了。 硬件 IIC 真正的价值在于：把 Start、Stop、地址发送、ACK 检测、时钟驱动、数...</div></div></div></a><a class="pagination-related" href="/2026/05/07/stm32-build-and-flash-flow/" title="STM32 烧录与构建链路复盘：从预处理到 ELF、HEX、BIN，再到代码烧进 Flash"><img class="cover" src="/img/top.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-05-07</div><div class="info-item-2">STM32 烧录与构建链路复盘：从预处理到 ELF、HEX、BIN，再到代码烧进 Flash</div></div><div class="info-2"><div class="info-item-1">STM32 相关的问题，一旦从“写代码”继续往下问，就很容易走到一条完整链路上：  代码是怎么变成固件文件的？ hex 和 bin 有什么区别？ 烧录器到底是怎么把程序写进芯片的？ 预处理阶段到底做了什么？  这些问题表面上分属编译原理和硬件下载两个方向，但如果把流程串起来，其实就是一条从源代码走到 Flash 的完整路径。   一、先把整条链路压缩成一行如果只用一行概括，STM32 工程从源码到芯片，大致经历的是： 源代码 -&gt; 预处理 -&gt; 编译 -&gt; 汇编 -&gt; 链接 -&gt; ELF&#x2F;AXF -&gt; HEX&#x2F;BIN -&gt; 烧录到 Flash -&gt; 复位运行 这条链里，前半段是工具链在处理“代码怎么变成机器指令”，后半段是在处理“这些机器指令怎么被写进目标芯片”。 二、预处理阶段到底在做什么很多人知道预处理是第一步，但容易把它想得很“高级”。实际上，预处理器做的大多是文本层面的展开和裁剪。 它主要处理 4 类事情： 1. 展开 #include当代码里写了： 1#include &quot;stm32f10x.h...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">谭世杰</div><div class="author-info-description">记录成长与学习的足迹</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">6</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">20</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/jijidaxiansheng"><i class="fab fa-github"></i><span>GitHub</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/jijidaxiansheng" target="_blank" title="GitHub"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到我的博客</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E5%85%88%E8%AF%B4%E7%BB%93%E8%AE%BA%EF%BC%9AOTA-%E4%BB%8E%E6%9D%A5%E4%B8%8D%E6%98%AF%E2%80%9C%E5%8F%AA%E5%8A%A0%E4%B8%80%E4%B8%AA%E4%B8%8B%E8%BD%BD%E5%8A%9F%E8%83%BD%E2%80%9D"><span class="toc-number">1.</span> <span class="toc-text">一、先说结论：OTA 从来不是“只加一个下载功能”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%9C%A8-STM32F103-W5500-%E8%BF%99%E4%B8%AA%E7%BB%84%E5%90%88%E9%87%8C%EF%BC%8CW5500-%E8%B4%9F%E8%B4%A3%E4%BB%80%E4%B9%88"><span class="toc-number">2.</span> <span class="toc-text">二、在 STM32F103 + W5500 这个组合里，W5500 负责什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E5%A6%82%E6%9E%9C%E7%94%A8-IAR-%E5%81%9A-OTA%EF%BC%8C%E6%9C%80%E5%85%B3%E9%94%AE%E7%9A%84%E6%98%AF%E5%93%AA%E5%87%A0%E5%A4%84%E9%85%8D%E7%BD%AE"><span class="toc-number">3.</span> <span class="toc-text">三、如果用 IAR 做 OTA，最关键的是哪几处配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E9%93%BE%E6%8E%A5%E5%9C%B0%E5%9D%80%E9%85%8D%E7%BD%AE"><span class="toc-number">3.1.</span> <span class="toc-text">1. 链接地址配置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E8%BE%93%E5%87%BA-BIN"><span class="toc-number">3.2.</span> <span class="toc-text">2. 输出 BIN</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%A0%A1%E9%AA%8C%E4%BF%A1%E6%81%AF"><span class="toc-number">3.3.</span> <span class="toc-text">3. 校验信息</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E5%8D%95%E5%8C%BA-OTA-%E5%92%8C%E5%8F%8C%E5%8C%BA-OTA%EF%BC%8C%E7%9C%9F%E6%AD%A3%E5%B7%AE%E5%9C%A8%E5%93%AA"><span class="toc-number">4.</span> <span class="toc-text">四、单区 OTA 和双区 OTA，真正差在哪</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%8D%95%E5%8C%BA-OTA"><span class="toc-number">4.1.</span> <span class="toc-text">1. 单区 OTA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%8F%8C%E5%8C%BA-OTA"><span class="toc-number">4.2.</span> <span class="toc-text">2. 双区 OTA</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81STM32F103C8T6-%E4%B8%BA%E4%BB%80%E4%B9%88%E4%BC%9A%E5%BE%88%E5%BF%AB%E5%8D%A1%E5%9C%A8%E7%A9%BA%E9%97%B4%E4%B8%8A"><span class="toc-number">5.</span> <span class="toc-text">五、STM32F103C8T6 为什么会很快卡在空间上</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%A4%96%E6%8C%82-Flash-%E5%9C%A8-OTA-%E9%87%8C%E8%A7%A3%E5%86%B3%E4%BA%86%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="toc-number">6.</span> <span class="toc-text">六、外挂 Flash 在 OTA 里解决了什么问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E6%8E%89%E7%94%B5%E4%BF%9D%E6%8A%A4%E5%92%8C%E5%9B%9E%E6%BB%9A%EF%BC%8C%E6%89%8D%E6%98%AF-OTA-%E6%96%B9%E6%A1%88%E6%98%AF%E5%90%A6%E6%88%90%E7%86%9F%E7%9A%84%E5%88%86%E6%B0%B4%E5%B2%AD"><span class="toc-number">7.</span> <span class="toc-text">七、掉电保护和回滚，才是 OTA 方案是否成熟的分水岭</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E6%9C%80%E5%9F%BA%E6%9C%AC%E7%9A%84%E6%8E%89%E7%94%B5%E4%BF%9D%E6%8A%A4%E6%80%9D%E8%B7%AF"><span class="toc-number">7.1.</span> <span class="toc-text">1. 最基本的掉电保护思路</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%8D%95%E5%8C%BA%E6%96%B9%E6%A1%88%E9%87%8C%E6%9C%80%E5%8D%B1%E9%99%A9%E7%9A%84%E9%98%B6%E6%AE%B5"><span class="toc-number">7.2.</span> <span class="toc-text">2. 单区方案里最危险的阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%8F%8C%E5%8C%BA%E6%96%B9%E6%A1%88%E4%B8%BA%E4%BB%80%E4%B9%88%E6%9B%B4%E9%80%82%E5%90%88%E5%81%9A%E5%9B%9E%E6%BB%9A"><span class="toc-number">7.3.</span> <span class="toc-text">3. 双区方案为什么更适合做回滚</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E7%9C%8B%E9%97%A8%E7%8B%97%E6%98%AF%E5%9B%9E%E6%BB%9A%E6%9C%BA%E5%88%B6%E9%87%8C%E5%BE%88%E5%85%B3%E9%94%AE%E7%9A%84%E4%B8%80%E7%8E%AF"><span class="toc-number">7.4.</span> <span class="toc-text">4. 看门狗是回滚机制里很关键的一环</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E9%82%A3%E6%9C%80%E5%90%8E%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E4%BC%9A%E4%BB%8E-C8T6-%E8%B5%B0%E5%88%B0-CBT6"><span class="toc-number">8.</span> <span class="toc-text">八、那最后为什么我会从 C8T6 走到 CBT6</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-Bootloader-%E5%92%8C-APP-%E4%B8%8D%E5%86%8D%E6%8C%A4%E6%88%90%E4%B8%80%E5%9B%A2"><span class="toc-number">8.1.</span> <span class="toc-text">1. Bootloader 和 APP 不再挤成一团</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%8F%8C%E5%8C%BA%E6%96%B9%E6%A1%88%E5%BC%80%E5%A7%8B%E5%8F%98%E5%BE%97%E2%80%9C%E6%9C%89%E8%AE%A8%E8%AE%BA%E4%BB%B7%E5%80%BC%E2%80%9D"><span class="toc-number">8.2.</span> <span class="toc-text">2. 双区方案开始变得“有讨论价值”</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%B7%A5%E7%A8%8B%E5%A4%8D%E6%9D%82%E5%BA%A6%E4%B8%8B%E9%99%8D%E4%BA%86"><span class="toc-number">8.3.</span> <span class="toc-text">3. 工程复杂度下降了</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E6%88%91%E7%8E%B0%E5%9C%A8%E6%9B%B4%E8%AE%A4%E5%8F%AF%E7%9A%84%E6%96%B9%E6%A1%88%E5%88%A4%E6%96%AD%E6%96%B9%E5%BC%8F"><span class="toc-number">9.</span> <span class="toc-text">九、我现在更认可的方案判断方式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">10.</span> <span class="toc-text">总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/05/07/stm32-ota-design-with-w5500/" title="STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6"/></a><div class="content"><a class="title" href="/2026/05/07/stm32-ota-design-with-w5500/" title="STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6">STM32 OTA 方案复盘：IAR、W5500、单区双区、外挂 Flash、回滚，最后为什么我选了 CBT6</a><time datetime="2026-05-07T02:50:00.000Z" title="发表于 2026-05-07 10:50:00">2026-05-07</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/05/07/stm32-build-and-flash-flow/" title="STM32 烧录与构建链路复盘：从预处理到 ELF、HEX、BIN，再到代码烧进 Flash"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="STM32 烧录与构建链路复盘：从预处理到 ELF、HEX、BIN，再到代码烧进 Flash"/></a><div class="content"><a class="title" href="/2026/05/07/stm32-build-and-flash-flow/" title="STM32 烧录与构建链路复盘：从预处理到 ELF、HEX、BIN，再到代码烧进 Flash">STM32 烧录与构建链路复盘：从预处理到 ELF、HEX、BIN，再到代码烧进 Flash</a><time datetime="2026-05-07T02:30:00.000Z" title="发表于 2026-05-07 10:30:00">2026-05-07</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/05/07/stm32-software-iic-vs-hardware-iic/" title="STM32 IIC 选型复盘：软件 IIC 和硬件 IIC 到底差在哪，项目里该怎么选"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="STM32 IIC 选型复盘：软件 IIC 和硬件 IIC 到底差在哪，项目里该怎么选"/></a><div class="content"><a class="title" href="/2026/05/07/stm32-software-iic-vs-hardware-iic/" title="STM32 IIC 选型复盘：软件 IIC 和硬件 IIC 到底差在哪，项目里该怎么选">STM32 IIC 选型复盘：软件 IIC 和硬件 IIC 到底差在哪，项目里该怎么选</a><time datetime="2026-05-07T02:10:00.000Z" title="发表于 2026-05-07 10:10:00">2026-05-07</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/22/stm32-uart-iic-spi-guide/" title="STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子"/></a><div class="content"><a class="title" href="/2026/04/22/stm32-uart-iic-spi-guide/" title="STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子">STM32 通信协议梳理：UART、IIC、SPI 的构成、时序和收发例子</a><time datetime="2026-04-22T09:40:00.000Z" title="发表于 2026-04-22 17:40:00">2026-04-22</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/04/22/stm32-interview-three-questions/" title="面试复盘：STM32 底层结构、存储器映射和 Flash 读写，我是怎么重新梳理的"><img src="/img/top.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="面试复盘：STM32 底层结构、存储器映射和 Flash 读写，我是怎么重新梳理的"/></a><div class="content"><a class="title" href="/2026/04/22/stm32-interview-three-questions/" title="面试复盘：STM32 底层结构、存储器映射和 Flash 读写，我是怎么重新梳理的">面试复盘：STM32 底层结构、存储器映射和 Flash 读写，我是怎么重新梳理的</a><time datetime="2026-04-21T20:20:00.000Z" title="发表于 2026-04-22 04:20:00">2026-04-22</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.5.4"></script><script src="/js/main.js?v=5.5.4"></script><div class="js-pjax"></div><script src="/js/default-light.js?v=20260422-2"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
